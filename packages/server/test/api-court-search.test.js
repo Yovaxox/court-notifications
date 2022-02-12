@@ -1,6 +1,5 @@
 const app = require('../server.js')
 const supertest = require('supertest')
-const { kill } = require('nodemon/lib/monitor/run')
 const request = supertest(app)
 const query = {
   language: 'en',

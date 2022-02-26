@@ -1,6 +1,8 @@
 const app = require('../server.js')
 const supertest = require('supertest')
 const request = supertest(app)
+const { knex } = require('../util/db');
+
 const query = {
   "selectedDefendant":"JACKSON,BRIAN,KEITH.11/04",
   "phone_number":process.env.TEST_PHONE_NUMBER,
@@ -31,21 +33,14 @@ const query = {
   }
 }
 
-jest.mock('twilio', () => {
-  const originalModule = jest.requireActual('twilio');
-
-  //Mock the default export and named export 'foo'
-  console.log('xx ' + typeof originalModule.twiml.MessagingResponse);
+jest.mock('../util/twilio-client', () => {
   return {
-    __esModule: true,
-    twiml: {
-      MessagingResponse: originalModule.twiml.MessagingResponse
-    },
-    messages: {
-      create: function (obj) {
-        const msg = 'Hi there from mocked Twlio';
-        console.log(msg);
-        return { body: msg}
+    twilioClient: {
+      messages: {
+        create: async function (obj) {
+          const msg = 'You have subscribed to notifications for BRIAN KEITH JACKSON . You may find details of charges on the NC Judicial Branch site: https://www1.aoc.state.nc.us/www/calendars.Criminal.do?county=100&court=BTH+&defendant=JACKSON,BRIAN,KEITH&start=0&navindex=0&fromcrimquery=yes&submit=Search'
+          return Promise.resolve({ body: msg});
+        }
       }
     }
   };
@@ -59,16 +54,11 @@ it('Successfully subscribes to a defendant', async function() {
   .set('Accept', 'application/json');
   expect(res.headers['content-type']).toMatch(/json/);
   expect(res.status).toEqual(200);
-  console.log('Return body: ' + JSON.stringify(res.body))
-
-  const expected = [
-    expect.stringMatching(/^JACKSON/)
-  ];
-  for (let i=0; i<res.body.length; ++i) {
-    let itm = res.body[i]
-    expect([itm['defendant']]).toEqual(
-      expect.arrayContaining(expected)
-    );
-    expect(itm['cases'].length).toBeGreaterThan(0)
-  }
+  expect(res.body.code).toEqual(200);
+  expect(res.body.message).toEqual('Successfully subscribed');
+  expect(res.body.index).toBeGreaterThan(0);
+  let subscribers = await knex('subscribers').select().where({
+    id: res.body.index
+  });
+  expect(subscribers.length).toEqual(1);
 });

@@ -4,6 +4,7 @@ const { unsubscribe } = require('./util/unsubscribe');
 const { subscribe } = require('./util/subscribe');
 const { computeUrlName } = require('./util/computeUrlName');
 const { logger } = require('./util/logger');
+const { twilioClient } = require('./util/twilio-client');
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -38,7 +39,8 @@ async function registerSubscription(req, callback) {
     const phone = body.phone_number.replace(/\D/g,'');
     ({ defendant, subscriberId, cases } = await subscribe(phone, body.selectedDefendant, body.details, req.t, req.language));
     // Now send a verification message to the user
-    const client = require('twilio')(accountSid, authToken);
+//    const client = require('twilio')(accountSid, authToken);
+    
     const nameTemplate = req.t("name-template");
     const defendantDetails = {
       fname: defendant.first_name,
@@ -51,7 +53,7 @@ async function registerSubscription(req, callback) {
 
     let msg = Mustache.render(nameTemplate, defendantDetails);
     try {
-      await client.messages
+      await twilioClient.messages
           .create({
             body: msg,
             from: fromTwilioPhone,
@@ -59,7 +61,7 @@ async function registerSubscription(req, callback) {
             to: phone
           })
           .then(async function(message) {
-            logger.debug('Successfully sent subscription confirmation: ' + message.body);
+            logger.debug('Sent subscription confirmation: ' + message.body);
             logSubscription(defendant, cases, req.language);
           });
     } catch (e) {

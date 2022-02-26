@@ -31,7 +31,25 @@ const query = {
   }
 }
 
-// Also want to unsuccessfully do it.
+jest.mock('twilio', () => {
+  const originalModule = jest.requireActual('twilio');
+
+  //Mock the default export and named export 'foo'
+  console.log('xx ' + typeof originalModule.twiml.MessagingResponse);
+  return {
+    __esModule: true,
+    twiml: {
+      MessagingResponse: originalModule.twiml.MessagingResponse
+    },
+    messages: {
+      create: function (obj) {
+        const msg = 'Hi there from mocked Twlio';
+        console.log(msg);
+        return { body: msg}
+      }
+    }
+  };
+});
 
 it('Successfully subscribes to a defendant', async function() {
   // Sends POST Request to /court-search endpoint
@@ -41,8 +59,8 @@ it('Successfully subscribes to a defendant', async function() {
   .set('Accept', 'application/json');
   expect(res.headers['content-type']).toMatch(/json/);
   expect(res.status).toEqual(200);
-  expect(Array.isArray(res.body)).toBe(true)
-  expect(res.body.length).toBeGreaterThan(1)
+  console.log('Return body: ' + JSON.stringify(res.body))
+
   const expected = [
     expect.stringMatching(/^JACKSON/)
   ];
